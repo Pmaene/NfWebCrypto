@@ -10,7 +10,9 @@
 
 #ifdef __cplusplus
 
-#if NACL_LINUX || NACL_OSX || __native_client__
+#if NACL_OSX && defined(__clang__)
+#include <memory>
+#elif NACL_LINUX || NACL_OSX || __native_client__
 #include <tr1/memory>
 #elif NACL_WINDOWS
 #include <memory>

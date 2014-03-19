@@ -18,7 +18,7 @@
 #ifndef DIFFIEHELLMANSESSION_H_
 #define DIFFIEHELLMANSESSION_H_
 #include <vector>
-#include <tr1/memory>
+#include <base/tr1.h>
 #include <openssl/bn.h>
 
 namespace cadmium {
@@ -36,7 +36,7 @@ public:
     bool computeSharedSecret(const Vuc& peerPubKey);
     Vuc getSharedSecret() const;
 private:
-    std::tr1::shared_ptr<DH> dh_;
+    shared_ptr<DH> dh_;
     Vuc sharedSecret_;
 };
 

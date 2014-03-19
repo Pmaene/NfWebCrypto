@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <vector>
 #include <string>
-#include <tr1/memory>
+#include <base/tr1.h>
 #include "DigestAlgo.h"
 
 namespace cadmium {
@@ -29,7 +29,7 @@ namespace crypto {
 class Pbkdf2
 {
 public:
-    Pbkdf2(std::tr1::shared_ptr<const DigestAlgo> algo);
+    Pbkdf2(shared_ptr<const DigestAlgo> algo);
     ~Pbkdf2() {}
     typedef std::vector<unsigned char> Vuc;
     bool generate(const Vuc& salt, uint32_t iterations, const std::string& password,

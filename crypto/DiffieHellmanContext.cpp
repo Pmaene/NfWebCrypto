@@ -41,7 +41,7 @@ DiffieHellmanContext::~DiffieHellmanContext()
 bool DiffieHellmanContext::init(const Vuc& p, const Vuc& g)
 {
     // create a new DH
-    dh_ = tr1::shared_ptr<DH>(DH_new(), DH_free);
+    dh_ = shared_ptr<DH>(DH_new(), DH_free);
     if (!dh_)
     {
         DLOG() << "DiffieHellmanContext::init: Unable to create DH using DH_new()\n";

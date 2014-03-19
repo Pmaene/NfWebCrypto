@@ -19,7 +19,11 @@
 #define CADMIUMCRYPTOIMPL_H_
 
 #include "CadmiumCrypto.h"
+#if defined(__APPLE__) && defined(__clang__)
+#include <memory>
+#else
 #include <tr1/memory>
+#endif
 #include <map>
 #include <base/Variant.h>
 #include <base/Noncopyable.h>

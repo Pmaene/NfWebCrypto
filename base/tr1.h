@@ -26,7 +26,12 @@
 
 #include <memory>
 
-#if defined(__CWCC__) && defined(RVL)
+#if defined(__clang__) && defined(__APPLE__)
+using std::shared_ptr;
+using std::weak_ptr;
+using std::static_pointer_cast;
+using std::enable_shared_from_this;
+#elif defined(__CWCC__) && defined(RVL)
 using std::tr1::shared_ptr;
 using std::tr1::weak_ptr;
 using std::tr1::static_pointer_cast;

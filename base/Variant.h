@@ -27,7 +27,7 @@
 #include <string>
 #include <vector>
 #include <stdint.h>
-#include <tr1/memory>
+#include "tr1.h"
 
 namespace cadmium { namespace base {
 
@@ -59,7 +59,7 @@ public:
     Variant(const std::string &key, const Variant &value);
     Variant(const std::vector<Variant> &vec);
     Variant(const std::map<std::string, Variant> &map);
-    Variant(const std::tr1::shared_ptr<CustomData> &custom);
+    Variant(const shared_ptr<CustomData> &custom);
 
     Variant(bool b);
     Variant(int val);
@@ -106,7 +106,7 @@ public:
     bool boolean() const;
     int64_t integer() const;
     double dbl() const;
-    std::tr1::shared_ptr<const CustomData> custom() const;
+    shared_ptr<const CustomData> custom() const;
     std::string string() const;
     std::vector<Variant> array() const;
     std::map<std::string, Variant> map() const;
@@ -139,7 +139,7 @@ private:
         int64_t integer;
         double dbl;
         bool boolean;
-        std::tr1::shared_ptr<CustomData> *customPtr;
+        shared_ptr<CustomData> *customPtr;
     } mData;
 };
 
@@ -245,11 +245,11 @@ inline Variant::Variant(double val)
     mData.dbl = val;
 }
 
-inline Variant::Variant(const std::tr1::shared_ptr<CustomData> &data)
+inline Variant::Variant(const shared_ptr<CustomData> &data)
     : mType(data.get() ? Custom : Null)
 {
     if (data.get()) {
-        mData.customPtr = new std::tr1::shared_ptr<CustomData>(data);
+        mData.customPtr = new shared_ptr<CustomData>(data);
     }
 }
 
@@ -507,7 +507,7 @@ inline Variant &Variant::operator=(const Variant &other)
     mType = other.mType;
     switch (mType) {
     case Custom:
-        mData.customPtr = new std::tr1::shared_ptr<CustomData>(*other.mData.customPtr);
+        mData.customPtr = new shared_ptr<CustomData>(*other.mData.customPtr);
         break;
     case Null:
     case Boolean:
@@ -599,9 +599,9 @@ inline std::map<std::string, Variant> Variant::map() const
     return isMap() ? *mData.mapPtr : std::map<std::string, Variant>();
 }
 
-inline std::tr1::shared_ptr<const Variant::CustomData> Variant::custom() const
+inline shared_ptr<const Variant::CustomData> Variant::custom() const
 {
-    return isCustom() ? *mData.customPtr : std::tr1::shared_ptr<Variant::CustomData>();
+    return isCustom() ? *mData.customPtr : shared_ptr<Variant::CustomData>();
 }
 
 inline void Variant::convert(void *value) const
@@ -610,7 +610,7 @@ inline void Variant::convert(void *value) const
     case Null:
         break;
     case Custom: {
-        std::tr1::shared_ptr<CustomData> *ptr = reinterpret_cast<std::tr1::shared_ptr<CustomData> *>(value);
+        shared_ptr<CustomData> *ptr = reinterpret_cast<shared_ptr<CustomData> *>(value);
         *ptr = *mData.customPtr;
         break; }
     case Integer: {

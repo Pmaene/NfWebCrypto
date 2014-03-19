@@ -38,7 +38,6 @@
 #include "SampleKeyProvision.h"
 
 using namespace std;
-using std::tr1::shared_ptr;
 using namespace cadmium::base;
 
 namespace cadmium {

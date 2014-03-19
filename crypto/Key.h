@@ -17,7 +17,7 @@
  */
 #ifndef KEY_H_
 #define KEY_H_
-#include <tr1/memory>
+#include <base/tr1.h>
 #include <vector>
 #include <base/Variant.h>
 #include "CadmiumCrypto.h"
@@ -33,9 +33,9 @@ struct Key
     // raw keying material for a symmetric key
     Vuc key;
     // RSA context for an RSA key
-    std::tr1::shared_ptr<RsaContext> pRsaContext;
+    shared_ptr<RsaContext> pRsaContext;
     // Diffie-Hellman context for a DH key
-    std::tr1::shared_ptr<DiffieHellmanContext> pDhContext;
+    shared_ptr<DiffieHellmanContext> pDhContext;
     // the type of the key: secret (symmetric), public, or private
     CadmiumCrypto::KeyType type;
     // able use exportKey() or not on this key
@@ -49,10 +49,10 @@ struct Key
     Key(const Vuc& key, CadmiumCrypto::KeyType kt, bool extractable,
             const base::Variant& algVar,
             const std::vector<CadmiumCrypto::KeyUsage>& usg);
-    Key(const Vuc& key, std::tr1::shared_ptr<RsaContext> pRsaContext,
+    Key(const Vuc& key, shared_ptr<RsaContext> pRsaContext,
         CadmiumCrypto::KeyType kt, bool extractable, const base::Variant& algVar,
         const std::vector<CadmiumCrypto::KeyUsage>& usg);
-    Key(const Vuc& key, std::tr1::shared_ptr<DiffieHellmanContext> pDhContext,
+    Key(const Vuc& key, shared_ptr<DiffieHellmanContext> pDhContext,
         CadmiumCrypto::KeyType kt, bool extractable, const base::Variant& algVar,
         const std::vector<CadmiumCrypto::KeyUsage>& usg);
     // default copy ctor and assignment operator OK, let the compiler define

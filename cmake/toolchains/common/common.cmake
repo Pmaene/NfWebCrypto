@@ -29,6 +29,6 @@ if (NOT CMAKE_BUILD_TYPE MATCHES "Gentoo")
     set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DBUILD_DEBUG" CACHE STRING "CMAKE_CXX_FLAGS_DEBUG")
 
     # Linker flags. Explicit stdc++ is required for ARM builds for some reason.
-    set(LDD_NO_EXECSTACK "-Wl,-z -Wl,noexecstack")
-    set(CMAKE_EXE_LINKER_FLAGS "-ldl -lrt -lstdc++ ${LDD_NO_EXECSTACK}" CACHE STRING "LDFLAGS")
+    set(LDD_NO_EXECSTACK "-Wa,--noexecstack")
+    set(CMAKE_EXE_LINKER_FLAGS "-ldl -lstdc++ ${LDD_NO_EXECSTACK}" CACHE STRING "LDFLAGS")
 endif()

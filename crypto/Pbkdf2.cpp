@@ -21,7 +21,6 @@
 #include "DigestAlgo.h"
 
 using namespace std;
-using namespace tr1;
 
 namespace cadmium {
 namespace crypto {

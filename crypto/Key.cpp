@@ -18,7 +18,6 @@
 #include "Key.h"
 
 using namespace std;
-using namespace tr1;
 
 namespace cadmium {
 

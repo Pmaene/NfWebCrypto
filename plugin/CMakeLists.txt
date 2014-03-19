@@ -28,7 +28,7 @@ include_directories (${PROJECT_BINARY_DIR})   # Version.h lands in the binary tr
 
     set(LIBNAME "nfwebcrypto")
     # For the .info file
-    set(SOPATH "lib${LIBNAME}.so")
+    set(SOPATH "lib${LIBNAME}.dylib")
     set(PLUGIN_NAME "NfWebCrypto")
     set(DESCRIPTION "Provider for W3C Web Crypto API")
     set(MIME_TYPES "application/x-ppapi-nfwebcrypto")

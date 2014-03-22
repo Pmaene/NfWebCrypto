@@ -150,6 +150,9 @@ bool reconcileAlgVsUsage(CadmiumCrypto::Algorithm algorithm,
             allowedKeyUsage.insert(CadmiumCrypto::WRAP);
             allowedKeyUsage.insert(CadmiumCrypto::UNWRAP);
             break;
+        case CadmiumCrypto::DH:
+            allowedKeyUsage.insert(CadmiumCrypto::DERIVE);
+            break;
         default:
             return false;
     }
@@ -506,6 +509,7 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::importKeyInternal(KeyFormat keyFormat,
         return CAD_ERR_INTERNAL;    // FIXME better error
     }
 
+    shared_ptr<DiffieHellmanContext> pDhContext(new DiffieHellmanContext());
     shared_ptr<RsaContext> pRsaContext(new RsaContext());
     KeyType keyType;
     switch (algType)
@@ -531,6 +535,42 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::importKeyInternal(KeyFormat keyFormat,
                 // For HMAC specifically, you must provide a hash
                 if (!isHashSpecPresent(algVar))
                     return CAD_ERR_UNKNOWN_ALGO;
+            }
+            break;
+        }
+        case DH:
+        {
+            switch (keyFormat)
+            {
+                case SPKI:
+                {
+                    // initialize the RSA context with the public SPKI-formatted key
+                    if (!pDhContext->setPublicSpki(keyVuc))
+                        return CAD_ERR_CIPHERERROR;
+                    // SPKI is always public
+                    keyType = PUBLIC;
+                    // Since this is a public key, it should be forced to be
+                    // extractable.
+                    extractable = true;
+                    keyVuc.clear(); // the pRsaContext holds the goods now
+                    break;
+                }
+                case PKCS8:
+                {
+                    // initialize the RSA context with the private PKCS#8-formatted key
+                    if (!pDhContext->setPrivatePkcs8(keyVuc))
+                        return CAD_ERR_CIPHERERROR;
+                    // PKCS8 is always private
+                    keyType = PRIVATE;
+                    keyVuc.clear(); // the pRsaContext holds the goods now
+                    break;
+                }
+                default:
+                {
+                    DLOG() << "CadmiumCrypto::importKey: ERROR: spki, pkcs8, or jwk required for algorithm "
+                            << toString(algType) << endl;
+                    return CAD_ERR_UNSUPPORTED_KEY_ENCODING;
+                }
             }
             break;
         }
@@ -959,6 +999,7 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::exportKey(uint32_t keyHandle,
 
     // Besides JWK, the other allowed export formats are:
     // RSA*:            spki (only) for public key, pkcs8 (only) for private key
+    // DH:              spki and raw for public key, pkcs8 and raw for private key
     // AES* and HMAC:   raw
     Vuc keyVuc;
     const Algorithm algType = toAlgorithm(key.algVar["name"].string());
@@ -984,7 +1025,34 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::exportKey(uint32_t keyHandle,
             return CAD_ERR_CIPHERERROR;  // FIXME, need better error
         }
     }
-    else if (isAlgorithmAes(algType) || isAlgorithmHmac(algType) || isAlgorithmDh(algType))
+    else if (isAlgorithmDh(algType))
+    {
+        bool success;
+        if (format == RAW)
+        {
+            keyVuc = key.key;
+            success = true;
+        }
+        else if (format == SPKI)
+        {
+            success = key.pDhContext->getPublicSpki(keyVuc);
+        }
+        else if (format == PKCS8)
+        {
+            success = key.pDhContext->getPrivatePkcs8(keyVuc);
+        }
+        else
+        {
+            DLOG() << "CadmiumCrypto::exportKey: Invalid format for DH key export\n";
+            return CAD_ERR_CIPHERERROR;  // FIXME, need better error
+        }
+        if (!success)
+        {
+            DLOG() << "CadmiumCrypto::exportKey: could not extract key\n";
+            return CAD_ERR_CIPHERERROR;  // FIXME, need better error
+        }
+    }
+    else if (isAlgorithmAes(algType) || isAlgorithmHmac(algType))
     {
         if (format != RAW)
         {
@@ -1685,7 +1753,7 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::dhKeyGen(const Variant& algVar, bool ex
 
     // make a new DH context and generate keys
     shared_ptr<DiffieHellmanContext> pDhContext(new DiffieHellmanContext());
-    bool success = pDhContext->init(primeVuc, generatorVuc);
+    bool success = pDhContext->generate(primeVuc, generatorVuc);
     if (!success)
         return CAD_ERR_KEYGEN;
 
@@ -1694,12 +1762,12 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::dhKeyGen(const Variant& algVar, bool ex
 
     // make a Key object for the public key and record it in the keyMap
     pubKeyHandle = nextKeyHandle_++;    // pubKeyHandle is output parm
-    const Key pubKey(pDhContext->getPubKey(), pDhContext, PUBLIC, true, algVar, keyUsage);
+    const Key pubKey(pDhContext->getPublicRaw(), pDhContext, PUBLIC, true, algVar, keyUsage);
     keyMap_[pubKeyHandle] = pubKey;
 
     // likewise for the private key
     privKeyHandle = nextKeyHandle_++;   // privKeyHandle is output parm
-    const Key privKey(pDhContext->getPrivKey(), pDhContext, PRIVATE, extractable, algVar, keyUsage);
+    const Key privKey(pDhContext->getPrivateRaw(), pDhContext, PRIVATE, extractable, algVar, keyUsage);
     keyMap_[privKeyHandle] = privKey;
 
     return CAD_ERR_OK;

@@ -15,8 +15,8 @@
  *     limitations under the License.
  *
  */
-#ifndef DIFFIEHELLMANSESSION_H_
-#define DIFFIEHELLMANSESSION_H_
+#ifndef DIFFIEHELLMANCONTEXT_H_
+#define DIFFIEHELLMANCONTEXT_H_
 #include <vector>
 #include <base/tr1.h>
 #include <openssl/bn.h>
@@ -30,13 +30,17 @@ public:
     typedef std::vector<unsigned char> Vuc;
     DiffieHellmanContext();
     ~DiffieHellmanContext();
-    bool init(const Vuc& p, const Vuc& g);
-    Vuc getPubKey() const;
-    Vuc getPrivKey() const;
+    bool generate(const Vuc& p, const Vuc& g);
+    Vuc getPublicRaw() const;
+    Vuc getPrivateRaw() const;
+    bool setPublicSpki(const Vuc & pubKeySpkiDer);
+    bool getPublicSpki(Vuc & pubKeySpkiDer) const;
+    bool setPrivatePkcs8(const Vuc & privKeyPkcs1Der);
+    bool getPrivatePkcs8(Vuc & privKeyPkcs1Der) const;
     bool computeSharedSecret(const Vuc& peerPubKey);
     Vuc getSharedSecret() const;
 private:
-    shared_ptr<DH> dh_;
+    DH * pOsslDh_;
     Vuc sharedSecret_;
 };
 

@@ -509,8 +509,6 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::importKeyInternal(KeyFormat keyFormat,
         return CAD_ERR_INTERNAL;    // FIXME better error
     }
 
-    shared_ptr<DiffieHellmanContext> pDhContext(new DiffieHellmanContext());
-    shared_ptr<RsaContext> pRsaContext(new RsaContext());
     KeyType keyType;
     switch (algType)
     {
@@ -536,15 +534,24 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::importKeyInternal(KeyFormat keyFormat,
                 if (!isHashSpecPresent(algVar))
                     return CAD_ERR_UNKNOWN_ALGO;
             }
+
+            // Finally, make a new Key object containing the extracted key and add it to
+            // the key store, indexed by (output) keyHandle.
+            // Note that extractable and keyUsage are copied through without processing.
+            keyHandle = nextKeyHandle_++;
+            Key key(keyVuc, keyType, extractable, algVar, keyUsage);
+            keyMap_[keyHandle] = key;
+
             break;
         }
         case DH:
         {
+            shared_ptr<DiffieHellmanContext> pDhContext(new DiffieHellmanContext());
             switch (keyFormat)
             {
                 case SPKI:
                 {
-                    // initialize the RSA context with the public SPKI-formatted key
+                    // initialize the DH context with the public SPKI-formatted key
                     if (!pDhContext->setPublicSpki(keyVuc))
                         return CAD_ERR_CIPHERERROR;
                     // SPKI is always public
@@ -552,17 +559,19 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::importKeyInternal(KeyFormat keyFormat,
                     // Since this is a public key, it should be forced to be
                     // extractable.
                     extractable = true;
-                    keyVuc.clear(); // the pRsaContext holds the goods now
+                    // load the raw key into the keyVuc (otherwise exports won't work)
+                    keyVuc = pDhContext->getPublicRaw();
                     break;
                 }
                 case PKCS8:
                 {
-                    // initialize the RSA context with the private PKCS#8-formatted key
+                    // initialize the DH context with the private PKCS#8-formatted key
                     if (!pDhContext->setPrivatePkcs8(keyVuc))
                         return CAD_ERR_CIPHERERROR;
                     // PKCS8 is always private
                     keyType = PRIVATE;
-                    keyVuc.clear(); // the pRsaContext holds the goods now
+                    // load the raw key into the keyVuc (otherwise exports won't work)
+                    keyVuc = pDhContext->getPrivateRaw();
                     break;
                 }
                 default:
@@ -572,12 +581,21 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::importKeyInternal(KeyFormat keyFormat,
                     return CAD_ERR_UNSUPPORTED_KEY_ENCODING;
                 }
             }
+
+            // Finally, make a new Key object containing the extracted key and add it to
+            // the key store, indexed by (output) keyHandle.
+            // Note that extractable and keyUsage are copied through without processing.
+            keyHandle = nextKeyHandle_++;
+            Key key(keyVuc, pDhContext, keyType, extractable, algVar, keyUsage);
+            keyMap_[keyHandle] = key;
+
             break;
         }
         case RSASSA_PKCS1_V1_5:
         case RSA_OAEP:
         case RSAES_PKCS1_V1_5:
         {
+            shared_ptr<RsaContext> pRsaContext(new RsaContext());
             switch (keyFormat)
             {
                 case SPKI:
@@ -610,6 +628,14 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::importKeyInternal(KeyFormat keyFormat,
                     return CAD_ERR_UNSUPPORTED_KEY_ENCODING;
                 }
             }
+
+            // Finally, make a new Key object containing the extracted key and add it to
+            // the key store, indexed by (output) keyHandle.
+            // Note that extractable and keyUsage are copied through without processing.
+            keyHandle = nextKeyHandle_++;
+            Key key(keyVuc, pRsaContext, keyType, extractable, algVar, keyUsage);
+            keyMap_[keyHandle] = key;
+
             break;
         }
         default:
@@ -619,13 +645,6 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::importKeyInternal(KeyFormat keyFormat,
             return CAD_ERR_BADARG;
         }
     }
-
-    // Finally, make a new Key object containing the extracted key and add it to
-    // the key store, indexed by (output) keyHandle.
-    // Note that extractable and keyUsage are copied through without processing.
-    keyHandle = nextKeyHandle_++;
-    Key key(keyVuc, pRsaContext, keyType, extractable, algVar, keyUsage);
-    keyMap_[keyHandle] = key;
 
 #ifdef BUILD_DEBUG
     if (!keyVuc.empty())

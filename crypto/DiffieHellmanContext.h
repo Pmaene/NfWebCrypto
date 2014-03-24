@@ -17,8 +17,8 @@
  */
 #ifndef DIFFIEHELLMANCONTEXT_H_
 #define DIFFIEHELLMANCONTEXT_H_
+#include <stdint.h>
 #include <vector>
-#include <base/tr1.h>
 #include <openssl/bn.h>
 
 namespace cadmium {
@@ -30,13 +30,15 @@ public:
     typedef std::vector<unsigned char> Vuc;
     DiffieHellmanContext();
     ~DiffieHellmanContext();
+    bool init(const Vuc& p, const Vuc& g);
     bool generate(const Vuc& p, const Vuc& g);
     Vuc getPublicRaw() const;
+    bool setPrivateRaw(const Vuc& p, const Vuc& g, const Vuc& priv_key);
     Vuc getPrivateRaw() const;
-    bool setPublicSpki(const Vuc & pubKeySpkiDer);
-    bool getPublicSpki(Vuc & pubKeySpkiDer) const;
-    bool setPrivatePkcs8(const Vuc & privKeyPkcs1Der);
-    bool getPrivatePkcs8(Vuc & privKeyPkcs1Der) const;
+    bool setPublicSpki(const Vuc& pubKeySpkiDer);
+    bool getPublicSpki(Vuc& pubKeySpkiDer) const;
+    bool setPrivatePkcs8(const Vuc& privKeyPkcs1Der);
+    bool getPrivatePkcs8(Vuc& privKeyPkcs1Der) const;
     bool computeSharedSecret(const Vuc& peerPubKey);
     Vuc getSharedSecret() const;
 private:

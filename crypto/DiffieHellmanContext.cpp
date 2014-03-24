@@ -21,6 +21,7 @@
 #include <string>
 #include <openssl/bn.h>
 #include <openssl/dh.h>
+#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <base/DebugUtil.h>
@@ -46,7 +47,7 @@ DiffieHellmanContext::~DiffieHellmanContext()
         DH_free(pOsslDh_);
 }
 
-bool DiffieHellmanContext::generate(const Vuc& p, const Vuc& g)
+bool DiffieHellmanContext::init(const Vuc& p, const Vuc& g)
 {
     // this method clobbers any existing context
     if (pOsslDh_)
@@ -79,30 +80,17 @@ bool DiffieHellmanContext::generate(const Vuc& p, const Vuc& g)
         return false;
     }
 
-    // check DH
-    // NOTE: DH_check() does not seem to work if you set your own p and g on a
-    // new DH context. My guess is that it is only appropriate after calling
-    // DH_generate parameters(), which we are not doing here.
-//    int errorBitMask = 0;
-//    if (!DH_check(dh_.get(), &errorBitMask))
-//    {
-//        DLOG() << "DiffieHellmanContext::init: DH_check failed\n";
-//        return false;
-//    }
-//    if (errorBitMask)
-//    {
-//        DLOG() << "DiffieHellmanContext::init: Parameters are not suitable: ";
-//        if (errorBitMask & DH_CHECK_P_NOT_PRIME)
-//            DLOG() << "DH_CHECK_P_NOT_PRIME ";
-//        if (errorBitMask & DH_CHECK_P_NOT_SAFE_PRIME)
-//            DLOG() << "DH_CHECK_P_NOT_SAFE_PRIME ";
-//        if (errorBitMask & DH_UNABLE_TO_CHECK_GENERATOR)
-//            DLOG() << "DH_UNABLE_TO_CHECK_GENERATOR ";
-//        if (errorBitMask & DH_NOT_SUITABLE_GENERATOR)
-//            DLOG() << "DH_NOT_SUITABLE_GENERATOR ";
-//        DLOG() << "\n";
-//        return false;
-//    }
+    return true;
+}
+
+bool DiffieHellmanContext::generate(const Vuc& p, const Vuc& g)
+{
+    // initialize the DH context
+    if (!DiffieHellmanContext::init(p, g))
+    {
+        DLOG() << "DiffieHellmanContext::generate: initialisation failed\n";
+        return false;
+    }
 
     // generate the pub/priv key pair
     if (!DH_generate_key(pOsslDh_))
@@ -119,22 +107,44 @@ DiffieHellmanContext::Vuc DiffieHellmanContext::getPublicRaw() const
     return BigNum(pOsslDh_->pub_key).encode();
 }
 
+bool DiffieHellmanContext::setPrivateRaw(const Vuc& p, const Vuc& g, const Vuc& priv_key)
+{
+    // initialize the DH context
+    if (!DiffieHellmanContext::init(p, g))
+    {
+        DLOG() << "DiffieHellmanContext::setPrivateRaw: initialisation failed\n";
+        return false;
+    }
+
+    BIGNUM *q = BigNum(p).getBIGNUM();
+    BN_sub_word(q, 1);
+    pOsslDh_->pub_key = BN_dup(q);
+
+    if (!(pOsslDh_->priv_key = BN_dup(BigNum(priv_key).getBIGNUM())))
+    {
+        DLOG() << "DiffieHellmanContext::setPrivateRaw: Unable to duplicate DH private key using BN_dup()\n";
+        return false;
+    }
+
+    return true;
+}
+
 DiffieHellmanContext::Vuc DiffieHellmanContext::getPrivateRaw() const
 {
     return BigNum(pOsslDh_->priv_key).encode();
 }
 
-bool DiffieHellmanContext::setPublicSpki(const Vuc & pubKeySpkiDer)
+bool DiffieHellmanContext::setPublicSpki(const Vuc& pubKeySpkiDer)
 {
     return false;
 }
 
-bool DiffieHellmanContext::getPublicSpki(Vuc & pubKeySpkiDer) const
+bool DiffieHellmanContext::getPublicSpki(Vuc& pubKeySpkiDer) const
 {
     return false;
 }
 
-bool DiffieHellmanContext::setPrivatePkcs8(const Vuc & pkcs8)
+bool DiffieHellmanContext::setPrivatePkcs8(const Vuc& pkcs8)
 {
     // OpenSSL does not make it easy to import a private key in PKCS#8 format.
     // Must go through some monkey-motions.
@@ -178,7 +188,7 @@ bool DiffieHellmanContext::setPrivatePkcs8(const Vuc & pkcs8)
     return true;
 }
 
-bool DiffieHellmanContext::getPrivatePkcs8(Vuc & pkcs8) const
+bool DiffieHellmanContext::getPrivatePkcs8(Vuc& pkcs8) const
 {
     if (!pOsslDh_->priv_key)
         return false;
@@ -220,7 +230,7 @@ bool DiffieHellmanContext::getPrivatePkcs8(Vuc & pkcs8) const
 bool DiffieHellmanContext::computeSharedSecret(const Vuc& peerPubKey)
 {
     // make sure we have a pub/priv key
-    if(!pOsslDh_->pub_key || !pOsslDh_->priv_key)
+    if(!pOsslDh_->priv_key)
     {
         DLOG() << "DiffieHellmanContext::computeSharedSecret: missing local key\n";
         return false;
@@ -246,6 +256,7 @@ bool DiffieHellmanContext::computeSharedSecret(const Vuc& peerPubKey)
     outLen = DH_compute_key(&sharedSecret_[0], BigNum(peerPubKey).getBIGNUM(), pOsslDh_);
     if(outLen == -1 || outLen > 128)
     {
+        DLOG() << ERR_error_string(ERR_get_error(), NULL) << "\n";
         DLOG() << "DiffieHellmanContext::computeSharedSecret: error computing shared secret\n";
         return false;
     }

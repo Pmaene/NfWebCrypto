@@ -549,6 +549,39 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::importKeyInternal(KeyFormat keyFormat,
             shared_ptr<DiffieHellmanContext> pDhContext(new DiffieHellmanContext());
             switch (keyFormat)
             {
+                case RAW:
+                {
+                    // Temporarily allowing importing RAW private keys, since generating
+                    // a PKCS8 string in JS is not that easy.
+                    // get prime from algorithm object
+                    if (!algVar.contains("params") && !algVar["params"].contains("prime"))
+                    {
+                        DLOG() << "CadmiumCrypto::importKey: ERROR: algorithm params missing prime\n";
+                        return CAD_ERR_INTERNAL;    // FIXME better error
+                    }
+                    const string primeStr64 = algVar["params"].mapValue<string>("prime");
+                    DLOG() << "\tprime: " << primeStr64 << endl;
+                    const Vuc primeVuc = str64toVuc(primeStr64);
+                    if (primeVuc.empty())
+                        return CAD_ERR_BADENCODING;
+
+                    // get generator from algorithm object
+                    if (!algVar.contains("params") && !algVar["params"].contains("generator"))
+                    {
+                        DLOG() << "CadmiumCrypto::importKey: ERROR: algorithm params missing generator\n";
+                        return CAD_ERR_INTERNAL;    // FIXME better error
+                    }
+                    const string generatorStr64 = algVar["params"].mapValue<string>("generator");
+                    DLOG() << "\tgenerator: " << generatorStr64 << endl;
+                    const Vuc generatorVuc = str64toVuc(generatorStr64);
+                    if (generatorVuc.empty())
+                        return CAD_ERR_BADENCODING;
+
+                    if (!pDhContext->setPrivateRaw(primeVuc, generatorVuc, keyVuc))
+                        return CAD_ERR_CIPHERERROR;
+                    keyType = PRIVATE;
+                    break;
+                }
                 case SPKI:
                 {
                     // initialize the DH context with the public SPKI-formatted key
@@ -1765,7 +1798,7 @@ CadErr CadmiumCrypto::CadmiumCryptoImpl::dhKeyGen(const Variant& algVar, bool ex
         return CAD_ERR_INTERNAL;    // FIXME better error
     }
     const string generatorStr64 = algVar["params"].mapValue<string>("generator");
-    DLOG() << "\tpublicExponent: " << generatorStr64 << endl;
+    DLOG() << "\tgenerator: " << generatorStr64 << endl;
     const Vuc generatorVuc = str64toVuc(generatorStr64);
     if (generatorVuc.empty())
         return CAD_ERR_BADENCODING;
